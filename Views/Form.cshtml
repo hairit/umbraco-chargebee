@@ -1,0 +1,160 @@
+﻿@using Chargebee.Utilities;
+@using Umbraco.Cms.Web.Common.PublishedModels;
+@inherits Umbraco.Cms.Web.Common.Views.UmbracoViewPage<ContentModels.Form>
+@using ContentModels = Umbraco.Cms.Web.Common.PublishedModels;
+
+@{
+	var fields = Umbraco.Content(Model.Key)
+	.ChildrenOfType("fields")
+	.Where(x => x.IsVisible()).First().ChildrenOfType("field").Where(x => x.IsVisible());
+
+	var buttons = Umbraco.Content(Model.Key)
+	.ChildrenOfType("buttons")
+	.Where(x => x.IsVisible()).First().ChildrenOfType("button").Where(x => x.IsVisible());
+
+	IEnumerable<IPublishedContent> classificationItems = new List<IPublishedContent>();
+	var dropdownFields = fields.Where(x => (string?)x.Value("type") == FieldType.Dropdown);
+	foreach (var dropdownField in dropdownFields)
+	{
+		var items = Umbraco.Content(dropdownField.Key)?.ChildrenOfType("classification")?.Where(x => x.IsVisible()).First()?.Children?.Where(x => x.IsVisible());
+		classificationItems = classificationItems.Concat(items ?? new List<IPublishedContent>());
+	}
+}
+
+@functions {
+	public void GetLabel(IPublishedContent field)
+	{
+		var label = (string?)field.Value("label");
+		if (string.IsNullOrWhiteSpace(label))
+		{
+			<></>
+		}
+		else
+		{
+			<label>@label</label>
+		}
+	}
+
+	public IEnumerable<IPublishedContent> GetDropdownOptions(IEnumerable<IPublishedContent> classificationItems, IPublishedContent dropdownField)
+	{
+		return classificationItems.Where(x => x.Parent?.Parent?.Key == dropdownField.Key);
+	}
+
+	public string GetDefaultDropdownOption(string? optionValue, string? defaultValue)
+	{
+		if(defaultValue == optionValue)
+		{
+			return "true";
+		}
+		else
+		{
+			return "false";
+		}
+	}
+}
+
+<form>
+	@foreach (var field in fields)
+	{
+		var fieldType = (string?)field.Value("type");
+		switch (fieldType)
+		{
+			case FieldType.Textbox:
+			{
+				<div>
+					@{GetLabel(field);}
+					<input type="text" required="@field.Value("mandatory")" />
+				</div>
+				break;
+			}
+			case FieldType.Textarea:
+			{
+				<div>@{GetLabel(field);}
+					<textarea 
+						required="@field.Value("mandatory")">
+					</textarea>
+				</div>
+				break;
+			}
+			case FieldType.Checkbox:
+			{
+				<div>
+					@{GetLabel(field);}
+					<input 
+						type="checkbox"
+						required="@field.Value("mandatory")" />
+				</div>
+				break;
+			}
+			case FieldType.Dropdown:
+			{
+				var defaultValue = (string?)field.Value("defaultValue");
+				var options = GetDropdownOptions(classificationItems, field);
+				GetLabel(field);
+				<select required="@field.Value("mandatory")">
+					<option value="" selected>N/A</option>
+					@foreach(var option in options)
+					{
+						var label = (string?)option.Value("label");
+						var value = (string?)option.Value("value");
+						<option value="@value">@label</option>
+					}
+				</select>
+				break;
+			}
+			case FieldType.Date:
+			{
+				break;
+			}
+			case FieldType.DateTime:
+			{
+				break;
+			}
+			case FieldType.Email:
+			{
+				<div>
+					@{GetLabel(field);}
+					<input
+						type="email"
+						required="@field.Value("mandatory")" />
+				</div>
+				break;
+			}
+			case FieldType.Phone:
+			{
+				<div>
+					@{GetLabel(field);}
+					<input 
+						type="tel"
+						pattern="@field.Value("phonePattern")"
+						required="@field.Value("mandatory")" />
+				</div>
+				break;
+			}
+			default:
+				break;
+		}
+	}
+	<div>
+		@foreach (var button in buttons)
+		{
+			var buttonType = (string?)button.Value("type");
+			switch (buttonType)
+			{
+				case ButtonType.Submit:
+				{
+					<button type="submit">@button.Value("text")</button>
+					break;
+				}
+				case ButtonType.Cancel:
+				{
+					<button>@button.Value("text")</button>
+					break;
+				}
+				default:
+					break;
+			}
+		}
+	</div>
+</form>
+
